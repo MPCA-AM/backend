@@ -1,14 +1,16 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Autoriser les requêtes depuis le frontend
   app.enableCors({
-    origin: 'http://localhost:5173',
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
   });
 
@@ -21,9 +23,18 @@ async function bootstrap() {
     }),
   );
 
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(
+      app.get(Reflector)
+    )
+  );
+
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   // Configuration Swagger
   const config = new DocumentBuilder()
     .setTitle('Portail cartographique de l’aviation à Madagascar')
+    .addBearerAuth()
     .setDescription(
       'API de gestion des infrastructures aéronautiques, des pistes, ' +
       'des aéronefs, des exploitants, des localités et des sources de données.',
@@ -56,4 +67,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
